@@ -6,10 +6,10 @@ contract Election {
     event Register(address indexed owner, uint indexed id, string name);
 
     struct Candidate {
+        address owner;
         uint id; 
         string name;
         uint numVotes; 
-        address owner;
     }
 
     struct Ballot {
@@ -67,26 +67,26 @@ contract Election {
         addressToId[msg.sender] = candidateCount; 
         
         candidates[candidateCount] = Candidate({
+            owner: msg.sender,
             id: candidateCount,
             name: _name, 
-            numVotes: 0, 
-            owner: msg.sender
+            numVotes: 0
         }); 
 
         emit Register(msg.sender, candidateCount, _name);
     }
 
     function getCandidate (uint _cidx) public view
-        returns (uint id, string memory name, uint numVotes, address addy)
+        returns (address addy, uint id, string memory name, uint numVotes)
     {
         //assert there are enough candidates to return
         Candidate storage candidate = candidates[_cidx];
 
         return (
+            candidate.owner,
             candidate.id, 
             candidate.name, 
-            candidate.numVotes, 
-            candidate.owner
+            candidate.numVotes
         );
     }
 
