@@ -29,12 +29,17 @@ contract Election {
         require(
             candidateCount >= _id, 
             "candidate is not registered"
-            ); 
+        ); 
+
+        require(
+            _id != 0, 
+            "candidate id is zero"
+        ); 
             
         require(
             votes[msg.sender].voted == false,
             "You have already voted"
-            ); 
+        ); 
             
         voteCount++; 
         votes[msg.sender] = Ballot({
@@ -58,7 +63,7 @@ contract Election {
             "Invalid name"
             );
         
-        candidateCount++;
+        candidateCount = candidateCount + 1;
         addressToId[msg.sender] = candidateCount; 
         
         candidates[candidateCount] = Candidate({
@@ -74,6 +79,7 @@ contract Election {
     function getCandidate (uint _cidx) public view
         returns (uint id, string memory name, uint numVotes, address addy)
     {
+        //assert there are enough candidates to return
         Candidate storage candidate = candidates[_cidx];
 
         return (
