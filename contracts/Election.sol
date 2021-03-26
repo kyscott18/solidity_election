@@ -9,7 +9,7 @@ contract Election is IERC20 {
 
     event Vote(address indexed owner, uint indexed id);
     event Register(address indexed owner, uint indexed id, string tag);
-    event Approval(address indexed owner, address indexed spender, uint value);
+    event Approval(address indexed owner, address indexed spender, uint value); 
     event Transfer(address indexed from, address indexed to, uint value);
 
     struct Candidate {
