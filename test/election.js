@@ -14,9 +14,13 @@ contract("Election", accounts => {
     })
 
     describe("constructor", () => {
-        it("initializes to zero", async () => {
+        it("initializes counts to zero", async () => {
             assert.equal(await electionInstance.candidateCount(), 0)
             assert.equal(await electionInstance.voteCount(), 0)
+        })
+        it("initializes stickers to 100", async() => {
+            assert.equal(await electionInstance.totalSupply(), 100)
+            assert.equal(await electionInstance.balanceOf(electionInstance.address), 100)
         })
     })
     
@@ -25,22 +29,22 @@ contract("Election", accounts => {
 
         it("should reject with double register", async () => {
             await electionInstance.register("Kyle", {
-                from: accounts[0],
+                from: accounts[1],
             })
 
             await expect(
                 electionInstance.register("Kyle", {
-                    from: accounts[0],
+                    from: accounts[1],
                 })
             ).to.be.rejected
 
             assert.equal(await electionInstance.candidateCount(), 1, "Candidate count not incremented")
         })
 
-        it("should reject with invalid name", async () => {
+        it("should reject with invalid tag", async () => {
             await expect(
                 electionInstance.register("", {
-                    from: accounts[0],
+                    from: accounts[1],
                 })
             ).to.be.rejected
 
@@ -49,19 +53,19 @@ contract("Election", accounts => {
 
         it("should be valid", async () => {
             const { logs } = await electionInstance.register("Kyle", {
-                from: accounts[0],
+                from: accounts[1],
             })
 
             assert.equal(await electionInstance.candidateCount(), 1, "Candidate count incremented")
 
             assert.equal(logs[0].event, "Register", "Register event emitted")
-            assert.equal(logs[0].args.owner, accounts[0], "Event emitted correct account")
+            assert.equal(logs[0].args.owner, accounts[1], "Event emitted correct account")
             assert.equal(logs[0].args.id, 1, "Event emitted correct id")
-            assert.equal(logs[0].args.name, "Kyle", "Event emitted correct name")
+            assert.equal(logs[0].args.tag, "Kyle", "Event emitted correct tag")
         
             const candidate = await electionInstance.getCandidate(1)
             assert.equal(candidate.id, 1, "Correct candidate id added")
-            assert.equal(candidate.name, "Kyle", "Correct candidate name added")
+            assert.equal(candidate.tag, "Kyle", "Correct candidate tag added")
             assert.equal(candidate.numVotes, 0, "Correct candidate numVotes added")
 
             // TODO: why doesn't this work
@@ -73,39 +77,38 @@ contract("Election", accounts => {
         })
 
         it("size test", async () => {
-            for (let i = 0; i < 10; ++i) {
+            for (let i = 1; i < 10; ++i) {
                 const { logs } = await electionInstance.register("Kyle" + i, {
                     from: accounts[i],
                 })
             
-                assert.equal(await electionInstance.candidateCount(), i+1, "Candidate count incremented")
+                assert.equal(await electionInstance.candidateCount(), i, "Candidate count incremented")
 
                 assert.equal(logs[0].event, "Register", "Register event emitted")
                 assert.equal(logs[0].args.owner, accounts[i], "Event emitted correct account")
-                assert.equal(logs[0].args.id, i+1, "Event emitted correct id")
-                assert.equal(logs[0].args.name, "Kyle" + i, "Event emitted correct name")
+                assert.equal(logs[0].args.id, i, "Event emitted correct id")
+                assert.equal(logs[0].args.tag, "Kyle" + i, "Event emitted correct tag")
 
-                const candidate = await electionInstance.getCandidate(i+1)
-                assert.equal(candidate.id, i+1, "Correct candidate id added")
-                assert.equal(candidate.name, "Kyle" + i, "Correct candidate name added")
+                const candidate = await electionInstance.getCandidate(i)
+                assert.equal(candidate.id, i, "Correct candidate id added")
+                assert.equal(candidate.tag, "Kyle" + i, "Correct candidate tag added")
                 assert.equal(candidate.numVotes, 0, "Correct candidate numVotes added")
             }
-
         })     
     })
 
     describe("vote", () => {
 
         beforeEach(async () => {
-            await electionInstance.register("Kyle", { from: accounts[0] })
-            await electionInstance.register("Jack", { from: accounts[1] })
-            await electionInstance.register("Amy", { from: accounts[2] })
+            await electionInstance.register("Kyle", { from: accounts[1] })
+            await electionInstance.register("Jack", { from: accounts[2] })
+            await electionInstance.register("Amy", { from: accounts[3] })
         })
 
         it("should reject if candidate is zero", async () => {
             await expect(
                 electionInstance.vote(0, {
-                    from: accounts[0]
+                    from: accounts[1]
                 })
             ).to.be.rejected
 
@@ -115,7 +118,7 @@ contract("Election", accounts => {
         it("should reject if candidate is not registered", async () => {
             await expect(
                 electionInstance.vote(4, {
-                    from: accounts[0]
+                    from: accounts[1]
                 })
             ).to.be.rejected
 
@@ -123,11 +126,11 @@ contract("Election", accounts => {
         })
 
         it("should reject voting twice", async () => {
-            await electionInstance.vote(1, { from: accounts[0] })
+            await electionInstance.vote(1, { from: accounts[1] })
 
             await expect(
                 electionInstance.vote(2, {
-                    from: accounts[0]
+                    from: accounts[1]
                 })
             ).to.be.rejected
 
@@ -141,13 +144,18 @@ contract("Election", accounts => {
         })
 
         it("should be valid", async () => {
-            const { logs } = await electionInstance.vote(1, { from: accounts[0] })
+            const { logs } = await electionInstance.vote(1, { from: accounts[1] })
 
             assert.equal(await electionInstance.voteCount(), 1, "Vote count incremented")
 
-            assert.equal(logs[0].event, "Vote", "Vote event emitted")
-            assert.equal(logs[0].args.owner, accounts[0], "Event emitted correct account")
-            assert.equal(logs[0].args.id, 1, "Event emitted correct id")
+            assert.equal(logs[0].event, "Transfer", "Transfer event emitted")
+            assert.equal(logs[0].args.from, electionInstance.address, "Event emitted correct from address")
+            assert.equal(logs[0].args.to, accounts[1], "Event emitted correct to address")
+            assert.equal(logs[0].args.value, 1, "Event emitted correct id")
+
+            assert.equal(logs[1].event, "Vote", "Vote event emitted")
+            assert.equal(logs[1].args.owner, accounts[1], "Event emitted correct account")
+            assert.equal(logs[1].args.id, 1, "Event emitted correct id")
         
             const candidate = await electionInstance.getCandidate(1)
             assert.equal(candidate.numVotes, 1, "Correct candidate numVotes added")
@@ -156,17 +164,24 @@ contract("Election", accounts => {
         })
 
         it("size test", async () => {
-            for (let i = 0; i < 3; ++i) {
+            for (let i = 1; i <= 3; ++i) {
                 const { logs } = await electionInstance.vote(1, { from: accounts[i] })
 
-                assert.equal(await electionInstance.voteCount(), i+1, "Vote count incremented")
+                assert.equal(await electionInstance.voteCount(), i, "Vote count incremented")
 
-                assert.equal(logs[0].event, "Vote", "Vote event emitted")
-                assert.equal(logs[0].args.owner, accounts[i], "Event emitted correct account")
-                assert.equal(logs[0].args.id, 1, "Event emitted correct id")
+                assert.equal(logs[0].event, "Transfer", "Transfer event emitted")
+                assert.equal(logs[0].args.from, electionInstance.address, "Event emitted correct from address")
+                assert.equal(logs[0].args.to, accounts[i], "Event emitted correct to address")
+                assert.equal(logs[0].args.value, 1, "Event emitted correct id")
+
+                assert.equal(logs[1].event, "Vote", "Vote event emitted")
+                assert.equal(logs[1].args.owner, accounts[i], "Event emitted correct account")
+                assert.equal(logs[1].args.id, 1, "Event emitted correct id")
             
                 const candidate = await electionInstance.getCandidate(1)
-                assert.equal(candidate.numVotes, i+1, "Correct candidate numVotes added")
+                assert.equal(candidate.numVotes, i, "Correct candidate numVotes added")
+                assert.equal(await electionInstance.balanceOf(electionInstance.address), 100-i, "transfer stickers from initial holder"); 
+                assert.equal(await electionInstance.balanceOf(accounts[i]), 1, "transfer to voter"); 
             }
         })
 
